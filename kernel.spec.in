@@ -183,6 +183,7 @@ export LINUX_UPSTREAM_VERSION=%{upstream_version}
 mkdir -p %kernel_build_dir
 
 cd linux-%upstream_version
+touch Makefile.rhelver
 %autopatch -p1
 
 # drop EXTRAVERSION - possible -rc suffix already included in %release
