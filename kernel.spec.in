@@ -154,7 +154,7 @@ Patch63: xen-pciback-pm-suspend.patch
 
 # Asus patches:
 # Patch64: patch-6.15-redhat.patch
-Patch65: asus-patch-series.patch
+# Patch65: asus-patch-series.patch
 
 %description
 Qubes Dom0 kernel.
