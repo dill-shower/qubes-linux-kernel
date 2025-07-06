@@ -1,0 +1,45 @@
+From: Your Name <your.email@example.com>
+Date: $(date)
+Subject: [PATCH] Add Zen 3 optimization with LTO support
+
+Full optimization for AMD Zen 3 processors including Link Time Optimization
+---
+ Makefile | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/Makefile b/Makefile
+index 1111111..2222222 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1000,6 +1000,31 @@ KBUILD_CFLAGS	+= -fno-strict-overflow
+ KBUILD_CFLAGS	+= -fno-stack-check
+ KBUILD_CFLAGS	+= $(call cc-option,-fconserve-stack)
+ 
++# Full Zen 3 optimization with LTO
++KBUILD_CFLAGS += -O3 -march=znver3 -mtune=znver3
++KBUILD_CFLAGS += -mmmx -mpopcnt -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mavx -mavx2 -msse4a -mfma -mbmi -mbmi2 -maes -mpclmul -mvpclmulqdq -madx -mabm -mclflushopt -mclwb -mclzero -mcx16 -mf16c -mfsgsbase -mfxsr -mlzcnt -mmovbe -mpku -mprfchw -mrdpid -mrdrnd -mrdseed -msha -mvaes -mxsave -mxsavec -mxsaveopt -mxsaves
++KBUILD_CFLAGS += --param l1-cache-size=32 --param l1-cache-line-size=64 --param l2-cache-size=512
++
++# Performance optimizations
++KBUILD_CFLAGS += -fomit-frame-pointer -fno-semantic-interposition
++KBUILD_CFLAGS += -falign-functions=32 -falign-loops=32 -falign-jumps=32
++KBUILD_CFLAGS += -funroll-loops -fpeel-loops
++KBUILD_CFLAGS += -fipa-pta -fdevirtualize-at-ltrans
++KBUILD_CFLAGS += -floop-nest-optimize -ftree-vectorize
++
++# Link Time Optimization
++KBUILD_CFLAGS += -flto=auto -fuse-linker-plugin
++KBUILD_LDFLAGS += -flto=auto -fuse-linker-plugin
++
++# Export for modules
++export KBUILD_CFLAGS KBUILD_LDFLAGS
++
+ # Prohibit date/time macros, which would make the build non-deterministic
+ KBUILD_CFLAGS	+= -Werror=date-time
+ 
++# Disable some debug options for performance
++ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3
++KBUILD_CFLAGS += -fno-asynchronous-unwind-tables
++endif
++
+ # Disable Clang's Built-in Assembler (LLVM IAS) for now
