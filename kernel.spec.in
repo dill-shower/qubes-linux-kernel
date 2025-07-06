@@ -152,6 +152,10 @@ Patch61: xen-events-Add-wakeup-support-to-xen-pirq.patch
 Patch62: xen-pm-use-suspend.patch
 Patch63: xen-pciback-pm-suspend.patch
 
+# Asus patches:
+Patch64: patch-6.14-redhat.patch
+Patch65: asus-patch-series.patch
+
 %description
 Qubes Dom0 kernel.
 
