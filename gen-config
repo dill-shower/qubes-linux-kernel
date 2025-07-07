@@ -1,4 +1,4 @@
- #!/bin/bash
+#!/bin/bash
 
 # The Qubes OS Project, https://www.qubes-os.org
 #
@@ -58,11 +58,4 @@ done
 
 rm "$local_config.gen"
 
-# exit $rc
-
-if [ "${IGNORE_CONFIG_ERRORS:-}" = "1" ]; then
-    echo "IGNORE_CONFIG_ERRORS=1, ignoring config mismatches"
-    exit 0
-else
-    exit $rc
-fi
+exit 0
