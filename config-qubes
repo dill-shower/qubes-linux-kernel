@@ -65,13 +65,13 @@ CONFIG_SECURITY_YAMA=y
 
 CONFIG_STACKPROTECTOR=y
 CONFIG_STACKPROTECTOR_STRONG=y
-
+CONFIG_GCC_PLUGIN_RANDSTRUCT=y
 
 ################################################################################
 ## Disable PCI hotplug to prevent DMA attacks via ExpressCard or Thunderbolt
 ## ports. QubesOS/qubes-issues#1673
 
-# CONFIG_HOTPLUG_PCI is not set
+CONFIG_HOTPLUG_PCI=m
 
 
 ################################################################################
@@ -135,7 +135,7 @@ CONFIG_XEN_GNTDEV_DMABUF=y
 ################################################################################
 ## Help crash debugging by saving crash messages to EFI variables
 
-CONFIG_EFI_VARS_PSTORE=y
+CONFIG_EFI_VARS_PSTORE=n
 
 
 ################################################################################
@@ -147,7 +147,7 @@ CONFIG_MODPROBE_PATH="/sbin/modprobe"
 ################################################################################
 ## workaround for running (unsupported) pv vms on qubes 4.1
 ## also need to blacklist the module in the vm/template!
-CONFIG_INTEL_PMC_CORE=m
+CONFIG_INTEL_PMC_CORE=n
 
 ## Technically, CONFIG_XEN_VIRTIO_FORCE_GRANT=y is a good idea, but we don't
 ## use virtio devices under Xen yet. On the other hand, this interfere with
@@ -178,5 +178,38 @@ CONFIG_PREEMPT=y
 
 ## Avoid kernel conflict with EfiACPIMemoryNVS region on some
 ## AMD Threadripper platforms
-CONFIG_PHYSICAL_START=0x200000
-CONFIG_PHYSICAL_ALIGN=0x200000
+# CONFIG_PHYSICAL_START=0x200000
+# CONFIG_PHYSICAL_ALIGN=0x200000
+
+
+## AMD Platform support
+CONFIG_X86_AMD_PLATFORM_DEVICE=y
+CONFIG_AMD_PMC=y
+CONFIG_SENSORS_K10TEMP=m
+CONFIG_ACPI_CPPC_CPUFREQ=m
+
+## CPU optimization for Zen 3
+CONFIG_MZEN3=y
+CONFIG_NR_CPUS=16
+CONFIG_SCHED_MC=y
+CONFIG_SCHED_SMT=y
+CONFIG_SCHED_MC_PRIO=y
+
+## Performance governors
+CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
+CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y
+CONFIG_CPU_FREQ_GOV_SCHEDUTIL=y
+
+## AMD P-State driver
+CONFIG_AMD_PSTATE=y
+CONFIG_AMD_PSTATE_DEFAULT_MODE=3
+
+## Additional performance optimizations
+CONFIG_NO_HZ_FULL=y
+CONFIG_RCU_BOOST=y
+CONFIG_RCU_BOOST_DELAY=0
+
+## MCE support
+# CONFIG_X86_MCELOG_LEGACY is not set
+# CONFIG_X86_MCE_INJECT is not set
+CONFIG_X86_BOOTPARAM_MEMORY_CORRUPTION_CHECK=y
