@@ -159,7 +159,6 @@ CONFIG_MODPROBE_PATH="/sbin/modprobe"
 ################################################################################
 ## workaround for running (unsupported) pv vms on qubes 4.1
 ## also need to blacklist the module in the vm/template!
-CONFIG_INTEL_PMC_CORE=n
 
 ## Technically, CONFIG_XEN_VIRTIO_FORCE_GRANT=y is a good idea, but we don't
 ## use virtio devices under Xen yet. On the other hand, this interfere with
@@ -181,7 +180,6 @@ CONFIG_PREEMPT=y
 CONFIG_X86_AMD_PLATFORM_DEVICE=y
 CONFIG_AMD_PMC=y
 CONFIG_SENSORS_K10TEMP=m
-CONFIG_ACPI_CPPC_CPUFREQ=m
 
 ## AMD microcode and error detection
 CONFIG_MICROCODE_AMD=y
@@ -193,7 +191,6 @@ CONFIG_CPU_SUP_AMD=y
 CONFIG_X86_MCE_AMD=y
 
 ## CPU optimization for Zen 3 (SMT disabled)
-CONFIG_MZEN3=y
 CONFIG_NR_CPUS=8
 CONFIG_SCHED_MC=y
 # CONFIG_SCHED_SMT is not set
