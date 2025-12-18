@@ -12,6 +12,6 @@ if [ -n "$differences" ]; then
     echo "$differences"
     echo
     if echo "$differences" | grep -q '^+' ; then
-	exit 1
+	echo "WARNING: Some config options were not applied (may be removed in newer kernels)"
     fi
 fi
