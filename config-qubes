@@ -1,6 +1,6 @@
 ## Qubes specific config settings.
-## Fully optimized for AMD Ryzen Zen 3 (znver3)
-## With randomization and security hardening
+##
+## Lines starting with ## are comments.
 
 
 ################################################################################
@@ -10,82 +10,10 @@ CONFIG_EXPERT=y
 
 
 ################################################################################
-## Компилятор
-
-CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE=y
-# CONFIG_CC_OPTIMIZE_FOR_SIZE is not set
-
-
-################################################################################
-## Кэш L1 = 64 байт
-
-CONFIG_X86_L1_CACHE_SHIFT=6
-CONFIG_X86_INTERNODE_CACHE_SHIFT=6
-
-
-################################################################################
-## Поддержка процессоров
-
-CONFIG_CPU_SUP_AMD=y
-CONFIG_CPU_SUP_INTEL=y
-
-
-################################################################################
-##                    РАНДОМИЗАЦИЯ И БЕЗОПАСНОСТЬ                             ##
-################################################################################
-
-## KASLR - рандомизация базового адреса ядра
-CONFIG_RANDOMIZE_BASE=y
-
-## Рандомизация памяти ядра
-CONFIG_RANDOMIZE_MEMORY=y
-
-## Рандомизация смещения стека ядра (при каждом syscall)
-CONFIG_RANDOMIZE_KSTACK_OFFSET=y
-CONFIG_RANDOMIZE_KSTACK_OFFSET_DEFAULT=y
-
-## Рандомизация аллокатора страниц
-CONFIG_SHUFFLE_PAGE_ALLOCATOR=y
-
-## SLAB/SLUB рандомизация и защита
-CONFIG_SLAB_FREELIST_RANDOM=y
-CONFIG_SLAB_FREELIST_HARDENED=y
-CONFIG_RANDOM_KMALLOC_CACHES=y
-
-## Рандомизация структур ядра (GCC plugin)
-CONFIG_GCC_PLUGIN_RANDSTRUCT=y
-
-## Защита от Meltdown/Spectre
-CONFIG_PAGE_TABLE_ISOLATION=y
-CONFIG_RETPOLINE=y
-
-## Защита буферов и копирования
-CONFIG_FORTIFY_SOURCE=y
-CONFIG_HARDENED_USERCOPY=y
-
-## Защита памяти
-CONFIG_STRICT_KERNEL_RWX=y
-CONFIG_STRICT_MODULE_RWX=y
-CONFIG_VMAP_STACK=y
-
-## Zero memory on allocation/free
-CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
-CONFIG_INIT_ON_FREE_DEFAULT_ON=y
-
-## Защита списков ядра
-CONFIG_LIST_HARDENED=y
-
-## BPF hardening
-CONFIG_BPF_UNPRIV_DEFAULT_OFF=y
-CONFIG_BPF_JIT_ALWAYS_ON=y
-
-
-################################################################################
-## Use xz to save space on /boot
+## Use zstd for better performance (faster boot, faster build)
 
 # CONFIG_KERNEL_GZIP is not set
-# CONFIG_KERNEL_ZSTD is not set
-CONFIG_KERNEL_XZ=n
+# CONFIG_KERNEL_XZ is not set
 CONFIG_KERNEL_ZSTD=y
 
 
@@ -97,11 +25,15 @@ CONFIG_IKCONFIG_PROC=y
 
 
 ################################################################################
-## Hardening options
+## Enable some more hardening options
 
 CONFIG_GCC_PLUGINS=y
 CONFIG_GCC_PLUGIN_LATENT_ENTROPY=y
 
+## STRUCTLEAK replaced by INIT_STACK_ALL_ZERO in newer kernels
+CONFIG_INIT_STACK_ALL_ZERO=y
+
+## Those depend on CONFIG_EXPERT
 CONFIG_ARCH_MMAP_RND_BITS=32
 CONFIG_ARCH_MMAP_RND_COMPAT_BITS=16
 
@@ -113,9 +45,11 @@ CONFIG_LEGACY_VSYSCALL_NONE=y
 CONFIG_SECURITY_DMESG_RESTRICT=y
 
 CONFIG_INTEL_IOMMU_DEFAULT_ON=y
-CONFIG_AMD_IOMMU=y
 
 # CONFIG_PROC_KCORE is not set
+
+CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
+CONFIG_INIT_ON_FREE_DEFAULT_ON=y
 
 CONFIG_PANIC_ON_OOPS=y
 CONFIG_PANIC_TIMEOUT=-1
@@ -131,39 +65,47 @@ CONFIG_SECURITY_YAMA=y
 CONFIG_STACKPROTECTOR=y
 CONFIG_STACKPROTECTOR_STRONG=y
 
+## Hardened usercopy (no FALLBACK option in 6.18+)
+CONFIG_HARDENED_USERCOPY=y
+
+## List hardening (replaces old DEBUG_LIST)
+CONFIG_LIST_HARDENED=y
+
+## RANDSTRUCT for structure layout randomization
+CONFIG_RANDSTRUCT_FULL=y
+
 
 ################################################################################
-## Disable PCI hotplug
+## Disable PCI hotplug to prevent DMA attacks via ExpressCard or Thunderbolt
+## ports. QubesOS/qubes-issues#1673
 
 CONFIG_HOTPLUG_PCI=y
 
 
 ################################################################################
-## LSM - Linux Security Modules
+## Deactivate selinux by default
 
 # CONFIG_DEFAULT_SECURITY_SELINUX is not set
 CONFIG_DEFAULT_SECURITY_DAC=y
-CONFIG_LSM="landlock,lockdown,yama,loadpin,safesetid,integrity,apparmor"
-
-CONFIG_SECURITY_LOCKDOWN_LSM=y
-CONFIG_SECURITY_LOCKDOWN_LSM_EARLY=y
-CONFIG_SECURITY_LANDLOCK=y
+CONFIG_LSM="yama,loadpin,safesetid,integrity"
 
 
 ################################################################################
-## Enable paravirt spinlocks
+## Enable paravirt spinlocks. This should be more performant.
 
 CONFIG_PARAVIRT_SPINLOCKS=y
 
 
 ################################################################################
-## Disable DEBUG_WX
+## Disable DEBUG_WX. Xen PV guests currently have some WX pages, so suppress
+## the useless Warning.
 
 # CONFIG_DEBUG_WX is not set
 
 
 ################################################################################
-## USB drivers as modules
+## Set USB drivers to module to allow attaching PCI devices to pciback before
+## those get loaded.
 
 CONFIG_USB_UHCI_HCD=m
 CONFIG_USB_OHCI_HCD=m
@@ -172,7 +114,7 @@ CONFIG_USB_XHCI_HCD=m
 
 
 ################################################################################
-## USB gadget driver support
+## USB gadget driver support for testing qvm-usb
 
 CONFIG_USB_GADGET=m
 CONFIG_USB_CONFIGFS=m
@@ -182,37 +124,69 @@ CONFIG_USB_DUMMY_HCD=m
 
 ################################################################################
 ## Enable AppArmor
+## It's optionally used by Whonix (https://www.whonix.org/wiki/AppArmor).
 
 CONFIG_SECURITY_APPARMOR=y
 
-
 ################################################################################
-## Xen options
+## Enable memory hotplug of Xen balloon driver. This is useful to map a lot of
+## grant tables, without using otherwise usable physical address space
 
 CONFIG_XEN_BALLOON_MEMORY_HOTPLUG=y
 CONFIG_XEN_UNPOPULATED_ALLOC=y
+
+################################################################################
+## Allow grant tables to be turned into dma-bufs and back. Needed by GUI daemon.
 CONFIG_XEN_GRANT_DMA_ALLOC=y
 CONFIG_XEN_GNTDEV_DMABUF=y
 
-
 ################################################################################
-## EFI crash logging
+## Help crash debugging by saving crash messages to EFI variables
 
 CONFIG_EFI_VARS_PSTORE=y
 
 
 ################################################################################
-## Modprobe path
+## Support Linux installs where /sbin/ and /usr/sbin/ have not been merged
 
 CONFIG_MODPROBE_PATH="/sbin/modprobe"
 
 
 ################################################################################
-## Misc
-
+## workaround for running (unsupported) pv vms on qubes 4.1
+## also need to blacklist the module in the vm/template!
 CONFIG_INTEL_PMC_CORE=m
+
+## Technically, CONFIG_XEN_VIRTIO_FORCE_GRANT=y is a good idea, but we don't
+## use virtio devices under Xen yet. On the other hand, this interfere with
+## running Xen nested within KVM. CONFIG_XEN_VIRTIO under PV (dom0) behaves as
+## CONFIG_XEN_VIRTIO_FORCE_GRANT, so disable whole CONFIG_XEN_VIRTIO.
+
 # CONFIG_XEN_VIRTIO is not set
+
+## Without kernel preemption, long-running operations in the dom0 kernel (such
+## as dm-thin metadata lookups or dm-crypt encryption and decryption) can make
+## the entire system less responsive.  It is easy to trigger this with e.g.
+## a parallel kernel build.
 CONFIG_PREEMPT=y
 
+################################################################################
+## AMD IOMMU (renamed in newer kernels)
+CONFIG_AMD_IOMMU=y
+
+################################################################################
+## Optimizations for Zen 3 (znver3)
+## Build for native CPU architecture
+
+CONFIG_X86_NATIVE_CPU=y
+
+################################################################################
+## Use -O3 optimization
+
+CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE_O3=y
+
+################################################################################
+## Avoid kernel conflict with EfiACPIMemoryNVS region on some
+## AMD Threadripper platforms
 CONFIG_PHYSICAL_START=0x200000
 CONFIG_PHYSICAL_ALIGN=0x200000
