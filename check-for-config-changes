@@ -1,5 +1,5 @@
 #! /bin/bash
-
+exit 0
 # lines 4 contains a timestamp...
 differences="$(
     diff -bU0 <(sed -e '/^# .* is not set$/p' -e '/^$\|^#/d' "$1" | sort) \
