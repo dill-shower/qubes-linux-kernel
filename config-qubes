@@ -68,9 +68,6 @@ CONFIG_STACKPROTECTOR_STRONG=y
 ## Disable PCI hotplug to prevent DMA attacks via ExpressCard or Thunderbolt
 ## ports. QubesOS/qubes-issues#1673
 
-# CONFIG_HOTPLUG_PCI is not set
-
-
 ################################################################################
 ## Deactivate selinux by default
 
@@ -190,5 +187,22 @@ CONFIG_PHYSICAL_ALIGN=0x200000
 
 ## Make it easy to debug memory issues, description says it's low overhead,
 ## suitable for production. And configure it to require kernel cmdline opt-in.
-CONFIG_MEM_ALLOC_PROFILING=y
+CONFIG_MEM_ALLOC_PROFILING=n
 # CONFIG_MEM_ALLOC_PROFILING_ENABLED_BY_DEFAULT is not set
+
+CONFIG_HOTPLUG_PCI=y
+CONFIG_HOTPLUG_PCI_PCIE=y
+CONFIG_HOTPLUG_PCI_ACPI=y
+CONFIG_PCIEASPM=y
+CONFIG_PCIEASPM_POWERSAVE=y
+
+# AMD
+CONFIG_X86_AMD_PLATFORM_DEVICE=y
+CONFIG_AMD_PMC=m
+CONFIG_HWMON=y
+CONFIG_SENSORS_K10TEMP=m
+CONFIG_ACPI_FAN=y
+CONFIG_ACPI_THERMAL=y
+CONFIG_THERMAL_HWMON=y
+CONFIG_ACPI_WMI=m
+CONFIG_WMI_BMOF=m
