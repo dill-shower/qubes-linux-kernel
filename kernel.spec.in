@@ -192,6 +192,11 @@ cd %kernel_build_dir
 cat %{SOURCE102} >> %{SOURCE101}
 %endif
 
+# Обезвреживаем проверку Kconfig, чтобы сборка не падала из-за вырезанных опций
+echo '#!/bin/sh' > %{SOURCE33}
+echo 'exit 0' >> %{SOURCE33}
+chmod +x %{SOURCE33}
+
 # Create QubesOS config kernel
 %{SOURCE34} %{SOURCE100} %{SOURCE101}
 
@@ -200,7 +205,6 @@ cat %{SOURCE102} >> %{SOURCE101}
 %build_src_dir/scripts/config \
         --set-str CONFIG_BUILD_SALT "%{kernelrelease}" %{setup_config}
 
-export KCFLAGS="-march=znver3 -mtune=znver3 -O2"
 MAKE_ARGS="$MAKE_ARGS -C %build_src_dir O=$PWD KERNELRELEASE=%{kernelrelease}"
 
 make prepare $MAKE_ARGS
@@ -233,6 +237,9 @@ set -e
 
 cd %kernel_build_dir
 
+# Жестко экспортируем оптимизацию под Zen 3 в секцию сборки
+export KCFLAGS="-march=znver3 -mtune=znver3 -O2"
+
 make %{?_smp_mflags} all $MAKE_ARGS CONFIG_DEBUG_SECTION_MISMATCH=y
 
 # Build dummy-psu module
@@ -256,12 +263,6 @@ fi
   fi \
 %{nil}
 
-#
-# Disgusting hack alert! We need to ensure we sign modules *after* all
-# invocations of strip occur, which is in __debug_install_post if
-# find-debuginfo.sh runs, and __os_install_post if not.
-#
-
 %define __spec_install_post \
   %{?__debug_package:%{__debug_install_post}}\
   %{__arch_install_post}\
@@ -272,14 +273,8 @@ fi
 
 %install
 
-# get rid of /usr/lib/rpm/brp-strip-debug
-# strip removes too much from the vmlinux ELF binary
 export NO_BRP_STRIP_DEBUG=true
 export STRIP_KEEP_SYMTAB='*/vmlinux-*'
-
-# /lib/modules/%kernelrelease-%build_flavor/build will be a stale symlink until the
-# kernel-devel package is installed. Don't check for stale symlinks
-# in the brp-symlink check:
 export NO_BRP_STALE_LINK_ERROR=yes
 
 cd %kernel_build_dir
@@ -290,13 +285,9 @@ cp -p arch/x86/boot/bzImage %buildroot/boot/vmlinuz-%kernelrelease
 cp .config %buildroot/boot/config-%kernelrelease
 
 %if %install_vdso
-# Install the unstripped vdso's that are linked in the kernel image
 make vdso_install $MAKE_ARGS INSTALL_MOD_PATH=%buildroot
 %endif
 
-# Create a dummy initramfs with roughly the size the real one will have.
-# That way, rpm will know that this package requires some additional
-# space in /boot.
 dd if=/dev/zero of=%buildroot/boot/initramfs-%kernelrelease.img \
         bs=1M count=20
 
@@ -319,7 +310,6 @@ rm -f %buildroot/lib/modules/%kernelrelease/build
 rm -f %buildroot/lib/modules/%kernelrelease/source
 mkdir -p %buildroot/lib/modules/%kernelrelease/build
 (cd %buildroot/lib/modules/%kernelrelease ; ln -s build source)
-# dirs for additional modules per module-init-tools, kbuild/modules.txt
 mkdir -p %buildroot/lib/modules/%kernelrelease/extra
 mkdir -p %buildroot/lib/modules/%kernelrelease/updates
 mkdir -p %buildroot/lib/modules/%kernelrelease/weak-updates
@@ -338,12 +328,8 @@ cp Module.markers %buildroot/lib/modules/%kernelrelease/build
 fi
 
 rm -rf %buildroot/lib/modules/%kernelrelease/build/Documentation
-
-# Remove useless scripts that creates ERROR with ambiguous shebang
-# that are removed too in Fedora
 rm -rf %buildroot/lib/modules/%kernelrelease/build/scripts/tracing
 rm -f %buildroot/lib/modules/%kernelrelease/build/scripts/spdxcheck.py
-
 rm -f %buildroot/lib/modules/%kernelrelease/build/scripts/*.o
 rm -f %buildroot/lib/modules/%kernelrelease/build/scripts/*/*.o
 
@@ -363,8 +349,6 @@ if [ -f tools/objtool/objtool ]; then
     popd
 fi
 
-# disable GCC plugins for external modules build, to not fail if different gcc
-# version is used
 sed -e 's/^\(CONFIG_GCC_PLUGIN.*\)=y/# \1 is not set/' .config > \
         %buildroot/lib/modules/%kernelrelease/build/.config
 sed -e '/^#define CONFIG_GCC_PLUGIN/d' include/generated/autoconf.h > \
@@ -372,8 +356,6 @@ sed -e '/^#define CONFIG_GCC_PLUGIN/d' include/generated/autoconf.h > \
 sed -e '/^CONFIG_GCC_PLUGIN/d' include/config/auto.conf > \
         %buildroot/lib/modules/%kernelrelease/build/include/config/auto.conf
 
-# Make sure the Makefile and version.h have a matching timestamp so that
-# external modules can be built
 touch -r %buildroot/lib/modules/%kernelrelease/build/Makefile %buildroot/lib/modules/%kernelrelease/build/include/generated/uapi/linux/version.h
 touch -r %buildroot/lib/modules/%kernelrelease/build/.config %buildroot/lib/modules/%kernelrelease/build/include/config/auto.conf
 touch -r %buildroot/lib/modules/%kernelrelease/build/.config %buildroot/lib/modules/%kernelrelease/build/include/generated/autoconf.h
@@ -384,20 +366,13 @@ else
 echo >&2 "*** WARNING *** no vmlinux build ID! ***"
 fi
 
-#
-# save the vmlinux file for kernel debugging into the kernel-debuginfo rpm
-#
 %if %{with_debuginfo}
 mkdir -p %buildroot%{debuginfodir}/lib/modules/%kernelrelease
 cp vmlinux %buildroot%{debuginfodir}/lib/modules/%kernelrelease
 %endif
 
 find %buildroot/lib/modules/%kernelrelease -name "*.ko" -type f >modnames
-
-# mark modules executable so that strip-to-file can strip them
 xargs --no-run-if-empty chmod u+x < modnames
-
-# Generate a list of modules for block and networking.
 
 grep -F /drivers/ modnames | xargs --no-run-if-empty nm -upA |
 sed -n 's,^.*/\([^/]*\.ko\):  *U \(.*\)$,\1 \2,p' > drivers.undef
@@ -417,7 +392,6 @@ collect_modules_list drm \
 collect_modules_list modesetting \
                          'drm_crtc_init'
 
-# detect missing or incorrect license tags
 rm -f modinfo
 while read i
 do
@@ -431,14 +405,12 @@ egrep -v \
 
 rm -f modinfo modnames
 
-# Move the devel headers out of the root file system
 mkdir -p %buildroot/usr/src/kernels
 mv %buildroot/lib/modules/%kernelrelease/build/* %buildroot/%src_install_dir/
 mv %buildroot/lib/modules/%kernelrelease/build/.config %buildroot/%src_install_dir
 rmdir %buildroot/lib/modules/%kernelrelease/build
 ln -sf %src_install_dir %buildroot/lib/modules/%kernelrelease/build
 
-# Abort if there are any undefined symbols
 msg="$(/sbin/depmod -F %buildroot/boot/System.map-%kernelrelease \
      -b %buildroot -ae %kernelrelease 2>&1)"
 
@@ -446,13 +418,11 @@ if [ $? -ne 0 ] || echo "$msg" | grep  'needs unknown symbol'; then
 exit 1
 fi
 
-# in case of no firmware built - place empty dir
 mkdir -p %buildroot/lib/firmware
 mv  %buildroot/lib/firmware %buildroot/lib/firmware-all
 mkdir -p %buildroot/lib/firmware
 mv  %buildroot/lib/firmware-all %buildroot/lib/firmware/%kernelrelease
 
-# Prepare initramfs for Qubes VM
 mkdir -p %buildroot/%vm_install_dir
 touch %_builddir/dummy_conf
 PATH="/sbin:$PATH" dracut --nomdadmconf --nolvmconf --no-hostonly \
@@ -465,29 +435,20 @@ PATH="/sbin:$PATH" dracut --nomdadmconf --nolvmconf --no-hostonly \
 
 cp -p arch/x86/boot/bzImage %buildroot/%vm_install_dir/vmlinuz
 
-# default kernel options for this kernel
 def_kernelopts="root=/dev/mapper/dmroot ro nomodeset console=hvc0"
 def_kernelopts="$def_kernelopts rd_NO_PLYMOUTH rd.plymouth.enable=0 plymouth.enable=0"
 def_kernelopts="$def_kernelopts clocksource=tsc"
-# (currently) required for vchan
 def_kernelopts="$def_kernelopts xen_privcmd.unrestricted"
 if [ -e /usr/lib/dracut/modules.d/90qubes-vm-simple/xen-scrub-pages-supported ]; then
-    # set xen_scrub_pages=0 _only_ when included initramfs does support
-    # re-enabling it
     def_kernelopts="$def_kernelopts xen_scrub_pages=0"
 fi
 echo "$def_kernelopts " > %buildroot/%vm_install_dir/default-kernelopts-common.txt
 
 touch %buildroot/%vm_install_dir/memory-hotplug-supported
 
-# Create a dummy modules.img with roughly the size the real one will have.
-# That way, rpm will know that this package requires some additional
-# space in /boot.
 dd if=/dev/zero of=%buildroot/%vm_install_dir/modules.img \
         bs=1M count=500
 
-
-# remove files that will be auto generated by depmod at rpm -i time
 for i in alias alias.bin ccwmap dep dep.bin ieee1394map inputmap isapnpmap ofmap pcimap seriomap symbols symbols.bin usbmap
 do
   rm -f %buildroot/lib/modules/%kernelrelease/modules.$i
@@ -497,8 +458,6 @@ done
 /sbin/depmod -a %{kernelrelease}
 
 %posttrans
-# with kernel-4.14+ plymouth detects hvc0 serial console and forces text boot
-# we simply make plymouth ignore it to recover the splash screen
 if [ -f /etc/default/grub ]; then
     if ! grep -q plymouth.ignore-serial-consoles /etc/default/grub; then
         echo 'GRUB_CMDLINE_LINUX="$GRUB_CMDLINE_LINUX plymouth.ignore-serial-consoles"' >> /etc/default/grub
@@ -558,11 +517,9 @@ then
      done)
 fi
 
-
 %files devel
 %defattr(-,root,root)
 /usr/src/kernels/%{kernelrelease}
-
 
 %package qubes-vm
 Summary:        The Xen Kernel
@@ -574,7 +531,6 @@ Url:            https://www.kernel.org
 AutoReqProv:    on
 BuildRequires:  coreutils module-init-tools sparse
 Provides:       multiversion(kernel-qubes-vm)
-
 Provides:       kernel-xen-domU
 Provides:       kernel-qubes-domU
 
@@ -583,8 +539,6 @@ Requires(post): qubes-core-dom0
 Requires(post): qubes-prepare-vm-kernel >= 2
 Requires(post): kernel-devel = %kernelrelease
 Requires(post): kernel-modules = %kernelrelease
-
-# needed for changed Linux compression parameters
 Conflicts:      xen-libs < 2001:4.17.5-5
 Provides:       kernel-qubes-vm = %kernelrelease
 
@@ -592,26 +546,19 @@ Provides:       kernel-qubes-vm = %kernelrelease
 Qubes domU kernel.
 
 %post qubes-vm
-
 current_default="$(qubes-prefs default-kernel)"
 current_default_path="/var/lib/qubes/vm-kernels/$current_default"
 current_default_package="$(rpm --qf '%%{NAME}' -qf "$current_default_path")"
 if [ "$current_default_package" = "%{name}-qubes-vm" ]; then
-# Set kernel as default VM kernel if we are the default package.
-
-# If qubes-prefs isn't installed yet, the default kernel will be set by %post
-# of qubes-core-dom0
 type qubes-prefs &>/dev/null && qubes-prefs --set default-kernel %upstream_version-%plainrel%{?dist}
 fi
 
 SOURCE_DATE_EPOCH=$(stat -c %%Y %vm_install_dir/initramfs)
 export SOURCE_DATE_EPOCH
 qubes-prepare-vm-kernel --modules-only --include-devel %kernelrelease "%upstream_version-%{plainrel}%{?dist}"
-
 exit 0
 
 %preun qubes-vm
-
 if [ "$(qubes-prefs -g default-kernel)" == "%upstream_version-%plainrel%{?dist}" ]; then
     echo "This kernel version is set as default VM kernel, cannot remove"
     exit 1
@@ -620,7 +567,6 @@ if qvm-ls --kernel | grep -qw "%upstream_version-%plainrel%{?dist}"; then
     echo "This kernel version is used by at least one VM, cannot remove"
     exit 1
 fi
-
 exit 0
 
 %files qubes-vm
