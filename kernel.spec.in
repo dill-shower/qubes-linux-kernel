@@ -200,7 +200,8 @@ cat %{SOURCE102} >> %{SOURCE101}
 %build_src_dir/scripts/config \
         --set-str CONFIG_BUILD_SALT "%{kernelrelease}" %{setup_config}
 
-MAKE_ARGS="$MAKE_ARGS -C %build_src_dir O=$PWD KERNELRELEASE=%{kernelrelease} KCFLAGS=\"-march=znver3 -mtune=znver3 -O2\""
+
+MAKE_ARGS="$MAKE_ARGS -C %build_src_dir O=$PWD KERNELRELEASE=%{kernelrelease}"
 
 make prepare $MAKE_ARGS
 make scripts $MAKE_ARGS
