@@ -229,7 +229,7 @@ rm -rf %_builddir/dummy-backlight
 tar -x -C %_builddir -zf %{SOURCE2}
 
 rm -rf %_builddir/v4l2loopback
-tar -x -C %_builddir -zf %{SOURCE4}
+# tar -x -C %_builddir -zf %{SOURCE4}
 
 %build
 
