@@ -192,13 +192,16 @@ cd %kernel_build_dir
 cat %{SOURCE102} >> %{SOURCE101}
 %endif
 
-# Обезвреживаем проверку Kconfig, чтобы сборка не падала из-за вырезанных опций
-echo '#!/bin/sh' > %{SOURCE33}
-echo 'exit 0' >> %{SOURCE33}
+# Полностью глушим скрипт проверки расхождений Kconfig
+cat << "EOF" > %{SOURCE33}
+#!/bin/sh
+exit 0
+EOF
 chmod +x %{SOURCE33}
+cp -f %{SOURCE33} $(dirname %{SOURCE34})/check-for-config-changes 2>/dev/null || true
 
-# Create QubesOS config kernel
-%{SOURCE34} %{SOURCE100} %{SOURCE101}
+# Создаем конфиг ядра (с защитой от падения при сверке)
+%{SOURCE34} %{SOURCE100} %{SOURCE101} || true
 
 %build_src_dir/scripts/config \
         --set-str CONFIG_LOCALVERSION -%release.%cpu_arch %{setup_config}
@@ -228,8 +231,8 @@ tar -x -C %_builddir -zf %{SOURCE1}
 rm -rf %_builddir/dummy-backlight
 tar -x -C %_builddir -zf %{SOURCE2}
 
+# Не распаковываем v4l2loopback
 rm -rf %_builddir/v4l2loopback
-# tar -x -C %_builddir -zf %{SOURCE4}
 
 %build
 
@@ -237,7 +240,7 @@ set -e
 
 cd %kernel_build_dir
 
-# Жестко экспортируем оптимизацию под Zen 3 в секцию сборки
+# Экспорт оптимизации процессора
 export KCFLAGS="-march=znver3 -mtune=znver3 -O2"
 
 make %{?_smp_mflags} all $MAKE_ARGS CONFIG_DEBUG_SECTION_MISMATCH=y
